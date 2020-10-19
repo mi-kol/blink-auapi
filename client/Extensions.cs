@@ -21,7 +21,7 @@ namespace client
             {
                 write(writer);
                 connection.Send(writer);
-            } catch { /* Ignored */ }
+            } catch { /* Ignored */ Console.Out.WriteLine("Oops");  }
             writer.Recycle();
         }
 
