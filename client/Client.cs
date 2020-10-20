@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using Newtonsoft.Json;
 using Npgsql;
+using System.Linq;
 
 namespace client
 {
@@ -15,7 +16,7 @@ namespace client
     {
 
         public static Dictionary<string, AmongUsClient> clients = new Dictionary<string, AmongUsClient>();
-        public static string connString = "Host=localhost;Username=postgres;Password=xxxxxxxxxx;Database=postgres";
+        public static string connString = "Host=localhost;Username=postgres;Password=UnityLeaf;Database=postgres";
         public static IPAddress REGION_IP = IPAddress.Parse("198.58.99.71");
         public static Dictionary<int, string> colors = new Dictionary<int, string>
         {
@@ -50,7 +51,7 @@ namespace client
             {
                 case UpdateIntention.Activated:
                     {
-                        cmd = new NpgsqlCommand("update amongus_games set \"is_active\" = :is_active, \"state\" = @state where \"id\" = '" + id + "' ;", conn);
+                        cmd = new NpgsqlCommand("update amongus_games set \"is_active\" = :is_active, \"state\" = :state where \"id\" = '" + id + "' ;", conn);
                         cmd.Parameters.Add(new NpgsqlParameter("is_active", NpgsqlTypes.NpgsqlDbType.Boolean));
                         cmd.Parameters.Add(new NpgsqlParameter
                         {
@@ -63,14 +64,9 @@ namespace client
                     }
                 case UpdateIntention.Deactivated:
                     {
-                        cmd = new NpgsqlCommand("update amongus_games set \"is_active\" = @is_active, \"ended_on\" = @ended_on where \"id\" = '" + id + "' ;", conn);
+                        cmd = new NpgsqlCommand("update amongus_games set \"is_active\" = @is_active where \"id\" = '" + id + "' ;", conn);
                         cmd.Parameters.Add(new NpgsqlParameter("is_active", NpgsqlTypes.NpgsqlDbType.Boolean));
-                        cmd.Parameters.Add(new NpgsqlParameter("ended_on", NpgsqlTypes.NpgsqlDbType.Timestamp));
                         cmd.Parameters[0].Value = false;
-
-                        NpgsqlCommand getTime = new NpgsqlCommand("SELECT NOW();");
-                        var now = getTime.ExecuteReader();
-                        cmd.Parameters[1].Value = now.GetTimeStamp(0);
 
                         break;
                     }
@@ -155,13 +151,13 @@ namespace client
             var client = new AmongUsClient();
 
             clients[game_code] = client;
+            clients.Select(i => $"{i.Key}: {i.Value}").ToList().ForEach(Console.Out.WriteLine);
 
             client.OnConnect += () => updateRow(id, UpdateIntention.Activated, conn);
             client.OnDisconnect += () =>
             {
                 updateRow(id, UpdateIntention.Deactivated, conn);
-                clients.Remove(game_code);
-                client.DisconnectAndExit();
+                Environment.Exit(0);
             };
             client.OnTalkingEnd += () => updateRow(id, UpdateIntention.SetPlaying, conn);
             client.OnTalkingStart += () => updateRow(id, UpdateIntention.SetDeliberation, conn);
@@ -171,7 +167,9 @@ namespace client
 
             try
             {
+                Console.Out.WriteLine("Attempting to connect.");
                 await client.Connect(region, game_code);
+                Console.Out.WriteLine("Completed.");
             }
             catch (AUException ex)
             {
@@ -200,11 +198,13 @@ namespace client
 
             conn.Notification += (o, e) =>
             {
+                Console.Out.WriteLine("Detected notification.");
                 SessionRow currentSession = JsonConvert.DeserializeObject<SessionRow>(e.Payload, settings);
-                //Console.Out.WriteLine(currentSession.join_code);
                 try
                 {
+                    Console.Out.WriteLine("Trying to engage ");
                     engageNewGame(REGION_IP, currentSession.join_code, currentSession.id, conn);
+                    Console.Out.WriteLine("Done I guess?");
                 }
                 catch (AUException ex)
                 {
@@ -216,7 +216,9 @@ namespace client
 
             await using (var cmd = new NpgsqlCommand("LISTEN \"newGameProposed\";", conn))
             {
+                Console.Out.WriteLine("Listening.");
                 await cmd.ExecuteNonQueryAsync();
+                Console.Out.WriteLine("Query execute passed.");
             }
 
 
