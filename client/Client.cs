@@ -16,7 +16,7 @@ namespace client
     {
 
         public static Dictionary<string, AmongUsClient> clients = new Dictionary<string, AmongUsClient>();
-        public static string connString = "Host=localhost;Username=postgres;Password=UnityLeaf;Database=postgres";
+        public static string connString = "Host=localhost;Username=postgres;Password=xxxxxxxxxx;Database=postgres";
         public static IPAddress REGION_IP = IPAddress.Parse("198.58.99.71");
         public static Dictionary<int, string> colors = new Dictionary<int, string>
         {
